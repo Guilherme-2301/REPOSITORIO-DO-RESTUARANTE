@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101010">
+  <meta name="description" content="Sistema Integrado do Restaurante IOT - Pedidos, Reservas e Gestão">
+  <title>Restaurante IOT | Gestão Integrada PWA</title>
+  
+  <!-- Configurações PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
+  
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="#" class="logo"><span>✦</span> RESTAURANTE IOT</a>
+    <nav class="main-nav">
+      <button class="nav-btn active" onclick="switchTab('cardapio-tab')">Cardápio</button>
+      <button class="nav-btn" onclick="switchTab('reserva-tab')">Reservas (Sex-Dom)</button>
+      <!-- Botão visível APENAS para Admin e Funcionários -->
+      <button class="nav-btn admin-only" id="gestao-tab-btn" style="display:none;" onclick="switchTab('gestao-tab')">🔒 Painel Admin / Gestão</button>
+    </nav>
+    <div class="user-actions">
+      <span id="user-display">Visitante</span>
+      <button id="auth-btn" class="gold-button" onclick="openAuthModal()">Login / Cadastro</button>
+      <button class="cart-button" id="open-cart" aria-label="Abrir carrinho">
+        🛒 Carrinho <span id="cart-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ABA CARDÁPIO (Pública) -->
+    <section class="tab-content active" id="cardapio-tab">
+      <section class="hero">
+        <div class="hero-content">
+          <span class="eyebrow">SABOR E TECNOLOGIA</span>
+          <h1>Seu momento.<br><span>Seu sabor.</span></h1>
+          <p>Faça seu pedido antecipado ou diretamente na mesa.</p>
+        </div>
+      </section>
+
+      <section class="menu-section">
+        <div class="section-heading">
+          <h2>Nosso <span>Cardápio</span></h2>
+        </div>
+        <nav class="categories">
+          <button class="category active" data-category="todos">Todos</button>
+          <button class="category" data-category="hamburgueres">Hambúrgueres</button>
+          <button class="category" data-category="batatas">Batatas</button>
+          <button class="category" data-category="bebidas">Bebidas</button>
+        </nav>
+        <div class="products-grid" id="products-grid"></div>
+      </section>
+    </section>
+
+    <!-- ABA RESERVAS (Pública / Clientes) -->
+    <section class="tab-content" id="reserva-tab">
+      <div class="section-heading">
+        <h2>Reserva de <span>Mesas</span></h2>
+        <p>Agendamentos disponíveis exclusivamente para Sextas, Sábados e Domingos.</p>
+      </div>
+      <form id="form-reserva" class="form-container" onsubmit="agendarMesa(event)">
+        <label>Data da Reserva:</label>
+        <input type="date" id="reserva-data" required>
+        
+        <label>Horário:</label>
+        <input type="time" id="reserva-hora" required>
+        
+        <label>Número de Pessoas:</label>
+        <input type="number" id="reserva-pessoas" min="1" max="8" value="2" required>
+        
+        <button type="submit" class="gold-button">Confirmar Reserva</button>
+      </form>
+      <div id="minhas-reservas-container" style="max-width: 500px; margin: 20px auto;">
+        <h3>Sua(s) Reserva(s)</h3>
+        <ul id="lista-reservas" style="margin-top: 10px; padding-left: 20px;"></ul>
+      </div>
+    </section>
+
+    <!-- ABA GESTÃO / PAINEL ADMIN (RESTRITA: APENAS ADMIN E FUNCIONÁRIOS) -->
+    <section class="tab-content" id="gestao-tab">
+      <div class="section-heading">
+        <h2>Painel Administrativo & <span>Gestão</span></h2>
+        <p>Área restrita a gestores e colaboradores autorizados.</p>
+      </div>
+
+      <!-- Métricas Financeiras -->
+      <div class="dashboard-grid">
+        <div class="card">
+          <h3>Faturamento Total</h3>
+          <p id="total-vendas">R$ 0,00</p>
+        </div>
+        <div class="card">
+          <h3>Total Comissões (10%)</h3>
+          <p id="total-comissoes">R$ 0,00</p>
+        </div>
+        <div class="card">
+          <h3>Total de Pedidos</h3>
+          <p id="total-qtd-vendas">0</p>
+        </div>
+      </div>
+
+      <!-- MÓDULO EXCLUSIVO DE ADMIN: Adicionar Produtos ao Cardápio -->
+      <div class="admin-section form-container">
+        <h3>➕ Cadastrar Novo Produto (Exclusivo Admin)</h3>
+        <form id="form-add-produto" onsubmit="cadastrarProduto(event)">
+          <label>Nome do Item:</label>
+          <input type="text" id="p-nome" required placeholder="Ex: X-Bacon Special">
+          
+          <label>Categoria:</label>
+          <select id="p-categoria">
+            <option value="hamburgueres">Hambúrgueres</option>
+            <option value="batatas">Batatas</option>
+            <option value="bebidas">Bebidas</option>
+          </select>
+          
+          <label>Preço (R$):</label>
+          <input type="number" id="p-preco" step="0.01" required placeholder="29.90">
+          
+          <button type="submit" class="gold-button" style="margin-top: 10px;">Cadastrar Produto</button>
+        </form>
+      </div>
+
+      <!-- Tabela Financeira e de Vendas -->
+      <h3 style="text-align: center; margin-top: 30px;">Histórico de Pedidos e Comissões dos Garçons</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Garçom Responsável</th>
+            <th>Valor do Pedido</th>
+            <th>10% Garçom</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-financeiro"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- MODAL DE AUTENTICAÇÃO -->
+  <div class="modal" id="auth-modal">
+    <div class="modal-content">
+      <button class="close-cart" onclick="closeAuthModal()" style="position: absolute; top: 10px; right: 15px;">✕</button>
+      <h2 style="margin-bottom: 15px;">Autenticação</h2>
+      <form id="form-auth">
+        <label>Nome:</label>
+        <input type="text" id="auth-nome" placeholder="Digite seu nome">
+        
+        <label style="margin-top: 10px; display: block;">Email:</label>
+        <input type="email" id="auth-email" required placeholder="email@exemplo.com">
+        
+        <label style="margin-top: 10px; display: block;">Senha:</label>
+        <input type="password" id="auth-senha" required>
+        
+        <label style="margin-top: 10px; display: block;">Perfil (RBAC):</label>
+        <select id="auth-role">
+          <option value="cliente">Cliente</option>
+          <option value="funcionario">Funcionário / Garçom</option>
+          <option value="admin">Administrador</option>
+        </select>
+        
+        <div class="auth-buttons">
+          <button type="button" class="gold-button" onclick="executarAuth('login')">Entrar (Login)</button>
+          <button type="button" class="gold-button secondary" onclick="executarAuth('cadastro')">Cadastrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay"></div>
+
+  <!-- CARRINHO -->
+  <aside class="cart-panel" id="cart-panel">
+    <div class="cart-header">
+      <h2 id="cart-title">Seu pedido</h2>
+      <button class="close-cart" id="close-cart">✕</button>
+    </div>
+
+    <div class="cart-items" id="cart-items"></div>
+
+    <div class="cart-footer">
+      <label style="font-size: 13px; color: var(--muted); margin-bottom: 5px; display: block;">Garçom Responsável (Opcional):</label>
+      <select id="cart-garcom" style="margin-bottom: 15px;"></select>
+
+      <div class="cart-total">
+        <span>Total</span>
+        <strong id="cart-total">R$ 0,00</strong>
+      </div>
+      <button class="checkout-button" id="checkout-button">FINALIZAR PEDIDO</button>
+    </div>
+  </aside>
+
+  <footer class="footer">
+    <a href="#" class="logo"><span>✦</span> RESTAURANTE IOT</a>
+    <small>© <span id="year"></span> Restaurante IOT. Todos os direitos reservados.</small>
+  </footer>
+
+  <!-- Registo do Service Worker para PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker PWA registado:', reg.scope))
+          .catch(err => console.error('Erro ao registar Service Worker PWA:', err));
+      });
+    }
+  </script>
+</body>
+</html>
